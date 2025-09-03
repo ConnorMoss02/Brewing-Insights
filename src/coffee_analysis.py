@@ -1,4 +1,6 @@
-print(">>> coffee_analysis.py is running")
+from pathlib import Path
+import pandas as pd
+import numpy as np
 
-if __name__ == "__main__":
-    print(">>> entering main()") 
+HERE = Path(__file__).resolve().parent
+DATA_DIR = (HERE / ".." / "data" / "raw").resolve() 
