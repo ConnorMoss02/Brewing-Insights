@@ -21,7 +21,7 @@ print(Coffee_import.head(3))
 print(Coffee_production.head(3))
 
 # ---- Step 2: Data Wrangling Export ----
-last_col_export = Coffee_export.columns[-1]
+last_col_export = Coffee_export.columns[-1] # Last column is where the total export data exists
 
 sorted_export = Coffee_export.copy() # Make a copy to sort by most recent year
 sorted_export[last_col_export] = pd.to_numeric(sorted_export[last_col_export], errors="coerce")
@@ -50,3 +50,26 @@ filtered_export_scaled[num_cols] = filtered_export_scaled[num_cols] / 1_000_000
 # "View" equivalent
 print("filtered_export_scaled sample:")
 print(filtered_export_scaled.sample(min(5, len(filtered_export_scaled))))
+
+# ---- Step 3: Data Wrangling Import ----
+last_col_import = Coffee_import.columns[-1]
+sorted_import = Coffee_import.columns[-1]
+sorted_import[last_col_import] = pd.to_numeric(sorted_import[last_col_import], errors="coerce")
+sorted_import = sorted_import.sort_values(by=last_col_import, ascending=False) 
+
+Coffee_import_small = [
+    "United States of America", "Germany", "France", "Italy", "Spain",
+      "Japan", "Belgium", "Canada", "United Kingdom", "Russian Federation", "Netherlands"]
+
+imp = Coffee_import.copy()
+imp["Country"] = imp["Country"].astype(str).str.strip() # Trim whitespace
+filtered_import = imp[imp["Country"].isin(Coffee_import_small)].copy()
+
+num_cols = filtered_import.sleect_dtypes(include=[np.number]).columns
+filtered_import_scaled = filtered_import.copy()
+filtered_import_scaled[num_cols] = filtered_import_scaled[num_cols] / 1_000_000
+
+print("filtered_import_scaled sample:")
+print(filtered_import_scaled.sample(min(5, len(filtered_import_scaled))))
+
+
