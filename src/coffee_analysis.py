@@ -2,8 +2,9 @@
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import re 
 
-# Point to your repo folders (portable — no hardcoded absolute paths)
+# Point to repo folders (portable — no hardcoded absolute paths)
 HERE = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd() # If user wants to run in Jupyter, PATH will be cwd()
 DATA_DIR = (HERE / ".." / "data" / "raw").resolve() 
 
@@ -15,6 +16,10 @@ f_prod   = DATA_DIR / "Coffee_production.csv"
 Coffee_export = pd.read_csv(f_export)
 Coffee_import = pd.read_csv(f_import)
 Coffee_production = pd.read_csv(f_prod)
+
+# Replace sentinel values with NaN
+for df in (Coffee_export, Coffee_import, Coffee_production):
+    df.replace(-2147483648, np.nan, inplace=True)
 
 print(Coffee_export.head(3))
 print(Coffee_import.head(3))
@@ -53,23 +58,77 @@ print(filtered_export_scaled.sample(min(5, len(filtered_export_scaled))))
 
 # ---- Step 3: Data Wrangling Import ----
 last_col_import = Coffee_import.columns[-1]
-sorted_import = Coffee_import.columns[-1]
+
+# make a DF copy (not a string!)
+sorted_import = Coffee_import.copy()
 sorted_import[last_col_import] = pd.to_numeric(sorted_import[last_col_import], errors="coerce")
-sorted_import = sorted_import.sort_values(by=last_col_import, ascending=False) 
+sorted_import = sorted_import.sort_values(by=last_col_import, ascending=False)
 
 Coffee_import_small = [
     "United States of America", "Germany", "France", "Italy", "Spain",
-      "Japan", "Belgium", "Canada", "United Kingdom", "Russian Federation", "Netherlands"]
+    "Japan", "Belgium", "Canada", "United Kingdom", "Russian Federation", "Netherlands",
+]
 
 imp = Coffee_import.copy()
-imp["Country"] = imp["Country"].astype(str).str.strip() # Trim whitespace
+imp["Country"] = imp["Country"].astype(str).str.strip()  # Trim whitespace
+
 filtered_import = imp[imp["Country"].isin(Coffee_import_small)].copy()
 
-num_cols = filtered_import.sleect_dtypes(include=[np.number]).columns
+# typo fixed: sleect_dtypes -> select_dtypes
+num_cols = filtered_import.select_dtypes(include=[np.number]).columns
 filtered_import_scaled = filtered_import.copy()
 filtered_import_scaled[num_cols] = filtered_import_scaled[num_cols] / 1_000_000
 
 print("filtered_import_scaled sample:")
 print(filtered_import_scaled.sample(min(5, len(filtered_import_scaled))))
 
+# ---- Step 4: DW Production ---- 
 
+last_col_prod = Coffee_production.columns[-1]
+sorted_consumption = Coffee_production.copy()
+sorted_consumption[last_col_prod] = pd.to_numeric(sorted_consumption[last_col_prod], errors="coerce")
+sorted_consumption = sorted_consumption.sort_values(by=last_col_prod, ascending=False)
+
+Coffee_production_small = [
+    "Brazil", "Viet Nam", "Colombia", "Indonesia", "Ethiopia", "India",
+    "Mexico", "Guatemala", "Honduras", "Uganda", "Peru",
+]
+
+prod = Coffee_production.copy()
+prod["Country"] = prod["Country"].astype(str).str.strip()
+filtered_production = prod[prod["Country"].isin(Coffee_production_small)].copy()
+
+num_cols = filtered_production.select_dtypes(include=[np.number]).columns
+filtered_production_scaled = filtered_production.copy()
+filtered_production_scaled[num_cols] = filtered_production_scaled[num_cols] / 1_000_000
+
+print("filtered_production_scaled sample:")
+print(filtered_production_scaled.sample(min(5, len(filtered_production_scaled))))
+
+year_cols = [
+    c for c in filtered_production_scaled.columns
+    if re.fullmatch(r"\d{4}(?:/\d{2})?", str(c))
+]
+
+id_vars = [c for c in filtered_production_scaled.columns if c not in year_cols]
+
+filtered_production_long = filtered_production_scaled.melt(
+    id_vars=id_vars,
+    value_vars=year_cols,
+    var_name="Year",
+    value_name="Value",
+)
+
+# Convert "1990/91" -> 1990 (take the first 4 digits as the season start year)
+filtered_production_long["Year"] = (
+    filtered_production_long["Year"]
+    .astype(str)
+    .str.extract(r"^(\d{4})")  # grab the first 4 digits
+)
+
+# Make Year numeric Int64 and drop rows that failed to parse
+filtered_production_long["Year"] = pd.to_numeric(filtered_production_long["Year"], errors="coerce").astype("Int64")
+filtered_production_long = filtered_production_long.dropna(subset=["Year"]).copy()
+
+print("filtered_production_long sample:")
+print(filtered_production_long.head(10))
