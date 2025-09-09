@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import re 
+import matplotlib.pyplot as plt
 
 # Point to repo folders (portable — no hardcoded absolute paths)
 HERE = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd() # If user wants to run in Jupyter, PATH will be cwd()
@@ -132,3 +133,34 @@ filtered_production_long = filtered_production_long.dropna(subset=["Year"]).copy
 
 print("filtered_production_long sample:")
 print(filtered_production_long.head(10))
+
+# --- EDA Summaries ---
+def summarize_col(df, colname: str, label: str):
+    if colname not in df.columns:
+        raise KeyError(f"Column '{colname}' not found in {label}")
+    print(f"\nSummary - {label} ({colname})")
+    print(df[colname].describe())
+
+summarize_col(filtered_export_scaled, "Total_export", "Exports")
+summarize_col(filtered_import_scaled, "Total_import", "Imports")
+summarize_col(filtered_production_scaled, "Total_production", "Production")
+
+# --- Visual EDA ---
+FIG_DIR = Path("reports/figures")
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+
+def boxplot_by_country(df, y_col, title, fname):
+    if "Country" not in df.columns or y_col not in df.columns:
+        raise KeyError("Expected columns: 'Country and the y_col you pass in")
+    plt.figure(figsize=(10, 5))
+
+    df.boxplot(column=y_col, by="Country", rot=90)
+    plt.title(title)
+    plt.suptitle("")
+    plt.xlabel("Country")
+    plt.ylabel(f"{y_col} (scaled)")
+    plt.tight_layout()
+    plt.savefig(FIG_DIR / fname, dpi = 200, bbox_inches = "tight")
+    plt.close()
+
+boxplot_by_country(filtered_import_scaled, "Total_import", "Boxplot of Total Imports by Country", "imports_boxplot.png")
