@@ -269,20 +269,41 @@ else:
     print("Skipped (not enough complete blocks).")
 
 # -------------------- ANOVA (parametric) + Tukey + LSD-style --------------------
+# --- One-way ANOVA (parametric) + Tukey + LSD-style pairwise ---
 print("\n=== One-way ANOVA (imports by country; excluding Germany & USA) ===")
 imp_minus2 = import_long[~import_long["Country"].isin(["Germany","United States of America"])].copy()
 if not imp_minus2.empty:
     model = smf.ols("Import_Value ~ C(Country)", data=imp_minus2).fit()
     print(anova_lm(model, typ=2))
-    # Tukey (alpha=0.01 to mirror R)
+
+    # Tukey (alpha=0.01 to mirror your R)
     try:
-        tuk = pairwise_tukeyhsd(endog=imp_minus2["Import_Value"], groups=imp_minus2["Country"], alpha=0.01)
+        tuk = pairwise_tukeyhsd(endog=imp_minus2["Import_Value"],
+                                groups=imp_minus2["Country"], alpha=0.01)
         print("\nTukey HSD (alpha=0.01):\n", tuk.summary())
     except Exception as e:
         print("Tukey failed:", e)
-    # LSD-style (uncorrected pairwise t-tests)
-    lsd = pg.pairwise_ttests(dv="Import_Value", between="Country", data=imp_minus2, parametric=True, padjust=None, effsize="cohen")
-    print("\nLSD-style pairwise (head):\n", lsd[["A","B","T","dof","p-unc","cohen-d"]].head(15))
+
+    # LSD-style (uncorrected pairwise t-tests) using the new Pingouin API
+    try:
+        # pairwise_tests is the maintained function; set padjust=None for "LSD-style"
+        lsd = pg.pairwise_tests(dv="Import_Value", between="Country",
+                                data=imp_minus2, parametric=True,
+                                padjust=None, effsize="cohen")
+
+        # Normalize column name for effect size
+        if "effsize" in lsd.columns and "cohen-d" not in lsd.columns:
+            lsd = lsd.rename(columns={"effsize": "cohen-d"})
+
+        cols = [c for c in ["A", "B", "T", "dof", "p-unc", "cohen-d"] if c in lsd.columns]
+        print("\nLSD-style pairwise (head):\n", lsd[cols].head(15))
+
+        # (optional) save a CSV
+        TABLE_DIR = (FIG_DIR.parent / "tables")
+        TABLE_DIR.mkdir(parents=True, exist_ok=True)
+        lsd.to_csv(TABLE_DIR / "anova_lsd_pairwise.csv", index=False)
+    except Exception as e:
+        print("LSD-style pairwise failed:", e)
 else:
     print("Skipped (no data after excluding Germany & USA).")
 
