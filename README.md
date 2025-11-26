@@ -11,21 +11,6 @@ Loads the datasets, cleans them, runs non-parametric & parametric tests, and sav
    ```bash
    git clone https://github.com/<your-username>/Brewing-Insights.git
    cd Brewing-Insights
-
-
-# Brewing-Insights
-
-Statistical exploration of global coffee **imports, exports, and production**.  
-Loads the datasets, cleans them, runs non-parametric & parametric tests, and saves figures/tables.
-
----
-
-## Quick start (2–3 minutes)
-
-1. **Fork** this repo (top-right on GitHub) and then clone your fork locally:
-   ```bash
-   git clone https://github.com/<your-username>/Brewing-Insights.git
-   cd Brewing-Insights
    ```
 
 2. **Create & activate a virtual environment** (recommended):
